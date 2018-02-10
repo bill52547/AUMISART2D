@@ -1,45 +1,41 @@
 #include "cu_projection.h"
-__host__ void host2_projection(float *proj, float *img, float angle, float SO, float SD, float da, int na, float ai, float db, int nb, float bi, int nx, int ny, int nz)
+__host__ void host2_projection(float *proj, float *img, float angle, float SO, float SD, float da, int na, float ai, int nx, int ny)
 {
     
 }
 
-__host__ void host_projection(float *d_proj, float *d_img, float angle, float SO, float SD, float da, int na, float ai, float db, int nb, float bi, int nx, int ny, int nz)
+__host__ void host_projection(float *d_proj, float *d_img, float angle, float SO, float SD, float da, int na, float ai, int nx, int ny)
 {
-    const dim3 gridSize_singleProj((na + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (nb + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
+    const dim3 gridSize_singleProj((na + BLOCKSIZE_X - 1) / BLOCKSIZE_X, 1, 1);
     const dim3 blockSize(BLOCKSIZE_X,BLOCKSIZE_Y, BLOCKSIZE_Z);
-    kernel_projection<<<gridSize_singleProj, blockSize>>>(d_proj, d_img, angle, SO, SD, da, na, ai, db, nb, bi, nx, ny, nz);
+    kernel_projection<<<gridSize_singleProj, blockSize>>>(d_proj, d_img, angle, SO, SD, da, na, ai, nx, ny);
     cudaDeviceSynchronize();
 }
 
-__global__ void kernel_projection(float *proj, float *img, float angle, float SO, float SD, float da, int na, float ai, float db, int nb, float bi, int nx, int ny, int nz){
+__global__ void kernel_projection(float *proj, float *img, float angle, float SO, float SD, float da, int na, float ai, int nx, int ny){
     int ia = BLOCKSIZE_X * blockIdx.x + threadIdx.x;
-    int ib = BLOCKSIZE_Y * blockIdx.y + threadIdx.y;
-    if (ia >= na || ib >= nb)
+    if (ia >= na)
         return;
-    int id = ia + ib * na;
+    int id = ia;
     proj[id] = 0.0f;
-    float x1, y1, z1, x2, y2, z2, x20, y20, cphi, sphi;
+    float x1, y1, x2, y2, x20, y20, cphi, sphi;
     cphi = (float)cosf(angle);
     sphi = (float)sinf(angle);
     x1 = -SO * cphi;
     y1 = -SO * sphi;
-    z1 = 0.0f;
     x20 = SD - SO;
     y20 = (ia + ai) * da; // locate the detector cell center before any rotation
     x2 = x20 * cphi - y20 * sphi;
     y2 = x20 * sphi + y20 * cphi;
-    z2 = (ib + bi) * db;
-    float x21, y21, z21; // offset between source and detector center
+    float x21, y21; // offset between source and detector center
     x21 = x2 - x1;
     y21 = y2 - y1;
-    z21 = z2 - z1;
 
     // y - z plane, where ABS(x21) > ABS(y21)
     if (ABS(x21) > ABS(y21)){
     // if (ABS(cphi) > ABS(sphi)){
-        float yi1, yi2, zi1, zi2;
-        int Yi1, Yi2, Zi1, Zi2;
+        float yi1, yi2;
+        int Yi1, Yi2;
         // for each y - z plane, we calculate and add the contribution of related pixels
         for (int ix = 0; ix < nx; ix++){
             // calculate y indices of intersecting voxel candidates
@@ -63,36 +59,21 @@ __global__ void kernel_projection(float *proj, float *img, float angle, float SO
             yi1 = MIN4(cyll, cylr, cyrl, cyrr); Yi1 = (int)floorf(yi1);
             yi2 = MAX4(cyll, cylr, cyrl, cyrr); Yi2 = (int)floorf(yi2);
 
-            float zl, zr, czl, czr;
-            zl = z21 - db / 2;
-            zr = z21 + db / 2;
             xc = (float)ix + 0.5f - (float)nx / 2 - x1 ;
 
-            ratio = zl / x21;
-            czl = ratio * xc + z1 + nz / 2;
-            ratio = zr / x21;
-            czr = ratio * xc + z1 + nz / 2;
-
-            zi1 = MIN(czl, czr); Zi1 = (int)floorf(zi1);
-            zi2 = MAX(czl, czr); Zi2 = (int)floorf(zi2);
-
-            float wy, wz;
+            float wy;
 
             for (int iy = MAX(0, Yi1); iy <= MIN(ny - 1, Yi2); iy++)
             {
                 wy = MIN(iy + 1.0f, yi2) - MAX(iy + 0.0f, yi1); wy /= (yi2 - yi1);
-                for (int iz = MAX(0, Zi1); iz <= MIN(nz - 1, Zi2); iz++)
-                {
-                    wz = MIN(iz + 1.0f, zi2) - MAX(iz + 0.0f, zi1); wz /= (zi2 - zi1);
-                    proj[id] += img[ix + iy * nx + iz * nx * ny] * wy * wz;
-                }                
+                proj[id] += img[ix + iy * nx] * wy;                
             }        
         }
     }
     // x - z plane, where ABS(x21) <= ABS(y21)    
     else{
-        float xi1, xi2, zi1, zi2;
-        int Xi1, Xi2, Zi1, Zi2;
+        float xi1, xi2;
+        int Xi1, Xi2;
         // for each y - z plane, we calculate and add the contribution of related pixels
         for (int iy = 0; iy < ny; iy++){
             // calculate y indices of intersecting voxel candidates
@@ -116,29 +97,14 @@ __global__ void kernel_projection(float *proj, float *img, float angle, float SO
             xi1 = MIN4(cxll, cxlr, cxrl, cxrr); Xi1 = (int)floorf(xi1);
             xi2 = MAX4(cxll, cxlr, cxrl, cxrr); Xi2 = (int)floorf(xi2);
 
-            float zl, zr, czl, czr;
-            zl = z21 - db / 2;
-            zr = z21 + db / 2;
             yc = (float)iy + 0.5f - (float)ny / 2 - y1;
 
-            ratio = zl / y21;
-            czl = ratio * yc + z1 + nz / 2;
-            ratio = zr / y21;
-            czr = ratio * yc + z1 + nz / 2;
-
-            zi1 = MIN(czl, czr); Zi1 = (int)floorf(zi1);
-            zi2 = MAX(czl, czr); Zi2 = (int)floorf(zi2);
-
-            float wx, wz;
+            float wx;
 
             for (int ix = MAX(0, Xi1); ix <= MIN(nx - 1, Xi2); ix++)
             {
                 wx = MIN(ix + 1.0f, xi2) - MAX(ix + 0.0f, xi1); wx /= (xi2 - xi1);
-                for (int iz = MAX(0, Zi1); iz <= MIN(nz - 1, Zi2); iz++)
-                {
-                    wz = MIN(iz + 1.0f, zi2) - MAX(iz + 0.0f, zi1); wz /= (zi2 - zi1);
-                    proj[id] += img[ix + iy * nx + iz * nx * ny] * wx * wz;
-                }                
+                proj[id] += img[ix + iy * nx] * wx;                
             }        
         }            
     }

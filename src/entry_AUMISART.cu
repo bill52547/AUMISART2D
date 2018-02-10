@@ -10,8 +10,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[])
 #define OUT_IMG plhs[0]
 // #define OUT_ERR plhs[1]
 
-int nx, ny, nz, na, nb, outIter, n_iter, *op_iter, n_views;
-float da, db, ai, bi, SO, SD, dx, lambda;
+int nx, ny, na, outIter, n_iter, *op_iter, n_views;
+float da, ai, SO, SD, dx, lambda;
 float *volumes, *flows, *err_weights, *angles;
 
 // resolutions of volumes 
@@ -25,11 +25,6 @@ if (mxGetField(GEO_PARA, 0, "ny") != NULL)
 else
 	mexErrMsgIdAndTxt("MATLAB:badInput","Can't found valid volume resolution ny.\n");
 
-if (mxGetField(GEO_PARA, 0, "nz") != NULL)
-    nz = (int)mxGetScalar(mxGetField(GEO_PARA, 0, "nz"));
-else
-	mexErrMsgIdAndTxt("MATLAB:badInput","Can't found valid volume resolution nz.\n");
-
 // detector plane resolutions
 if (mxGetField(GEO_PARA, 0, "na") != NULL)
     na = (int)mxGetScalar(mxGetField(GEO_PARA, 0, "na"));
@@ -37,13 +32,6 @@ else if (mxGetField(GEO_PARA, 0, "nv") != NULL)
     na = (int)mxGetScalar(mxGetField(GEO_PARA, 0, "nv"));
 else
 	mexErrMsgIdAndTxt("MATLAB:badInput","Can't found valid number of detector in plane, which is denoted as na or nu.\n");
-
-if (mxGetField(GEO_PARA, 0, "nb") != NULL)
-    nb = (int)mxGetScalar(mxGetField(GEO_PARA, 0, "nb"));
-else if (mxGetField(GEO_PARA, 0, "nu") != NULL)
-    nb = (int)mxGetScalar(mxGetField(GEO_PARA, 0, "nu"));
-else
-	mexErrMsgIdAndTxt("MATLAB:badInput","Can't found valid number of detector across plane, which is denoted as nb or nv.\n");
 
 // voxel resolution dx, which is also the scaling factor of the whole system
 if (mxGetField(GEO_PARA, 0, "dx") != NULL)
@@ -63,15 +51,6 @@ else{
     mexPrintf("If don't want that default value, please set para.da manually.\n");
 }
 
-if (mxGetField(GEO_PARA, 0, "db") != NULL)
-    db = (float)mxGetScalar(mxGetField(GEO_PARA, 0, "db"));
-else{
-    db = 1.0f;
-    mexPrintf("Automatically set detectof cell size db to 1. \n");
-    mexPrintf("If don't want that default value, please set para.db manually.\n");
-}
-
-
 // detector plane offset from centered calibrations
 if (mxGetField(GEO_PARA, 0, "ai") != NULL){
     ai = (float)mxGetScalar(mxGetField(GEO_PARA, 0, "ai"));
@@ -83,15 +62,6 @@ else{
     ai = - ((float)na / 2 - 0.5f);
 }
 
-if (mxGetField(GEO_PARA, 0, "bi") != NULL){
-    bi = (float)mxGetScalar(mxGetField(GEO_PARA, 0, "bi"));
-    bi -= ((float)nb / 2 - 0.5f);
-}
-else{
-    mexPrintf("Automatically set detector offset bi to 0. \n");
-    mexPrintf("If don't want that default value, please set para.bi manually.\n");
-    bi = - ((float)nb / 2 - 0.5f);
-}
 
 if (mxGetField(GEO_PARA, 0, "SO") != NULL)
     SO = (float)mxGetScalar(mxGetField(GEO_PARA, 0, "SO"));
@@ -170,40 +140,38 @@ h_proj = (float*)mxGetData(PROJ);
 
 // setup output images
 OUT_IMG = mxCreateNumericMatrix(0, 0, mxSINGLE_CLASS, mxREAL);
-const mwSize outDim[3] = {(mwSize)nx, (mwSize)ny, (mwSize)nz};
-mxSetDimensions(OUT_IMG, outDim, 3);
-mxSetData(OUT_IMG, mxMalloc(nx * ny * nz * sizeof(float)));
+const mwSize outDim[2] = {(mwSize)nx, (mwSize)ny};
+mxSetDimensions(OUT_IMG, outDim, 2);
+mxSetData(OUT_IMG, mxMalloc(nx * ny * sizeof(float)));
 float *h_outimg = (float*)mxGetData(OUT_IMG);
 
 plhs[1] = mxCreateNumericMatrix(n_iter * n_views, 1, mxSINGLE_CLASS, mxREAL);
 float *h_outnorm = (float*)mxGetData(plhs[1]);
 
 plhs[2] = mxCreateNumericMatrix(0, 0, mxSINGLE_CLASS, mxREAL);
-mxSetDimensions(plhs[2], outDim, 3);
-mxSetData(plhs[2], mxMalloc(nx * ny * nz * sizeof(float)));
+mxSetDimensions(plhs[2], outDim, 2);
+mxSetData(plhs[2], mxMalloc(nx * ny * sizeof(float)));
 float *h_outalphax = (float*)mxGetData(plhs[2]);
 
-const mwSize outDim2[3] = {(mwSize)na, (mwSize)nb, (mwSize)n_views};
+const mwSize outDim2[2] = {(mwSize)na, (mwSize)n_views};
 plhs[3] = mxCreateNumericMatrix(0, 0, mxSINGLE_CLASS, mxREAL);
-mxSetDimensions(plhs[3], outDim2, 3);
-mxSetData(plhs[3], mxMalloc(na * nb * n_views * sizeof(float)));
+mxSetDimensions(plhs[3], outDim2, 2);
+mxSetData(plhs[3], mxMalloc(na * n_views * sizeof(float)));
 float *h_outproj = (float*)mxGetData(plhs[3]);
 
 mexPrintf("Start main body of AUMISART. \n");
 if (mxGetField(ITER_PARA, 0, "alpha_x") == NULL)
 {
-    host_AUMISART(h_outimg, h_outproj, h_outnorm, h_outalphax, h_img, h_proj, nx, ny, nz, na, nb, outIter, n_views, n_iter, op_iter, da, db, ai, bi, SO, SD, dx, lambda, volumes, flows, err_weights, angles);
+    host_AUMISART(h_outimg, h_outproj, h_outnorm, h_outalphax, h_img, h_proj, nx, ny, na, outIter, n_views, n_iter, op_iter, da, ai, SO, SD, dx, lambda, volumes, flows, err_weights, angles);
 }
 else
 {
-    float *alpha_x, *alpha_y, *alpha_z, *beta_x, *beta_y, *beta_z;
+    float *alpha_x, *alpha_y, *beta_x, *beta_y;
     alpha_x = (float*)mxGetData(mxGetField(ITER_PARA, 0, "alpha_x"));
     alpha_y = (float*)mxGetData(mxGetField(ITER_PARA, 0, "alpha_y"));
-    alpha_z = (float*)mxGetData(mxGetField(ITER_PARA, 0, "alpha_z"));
     beta_x = (float*)mxGetData(mxGetField(ITER_PARA, 0, "beta_x"));
     beta_y = (float*)mxGetData(mxGetField(ITER_PARA, 0, "beta_y"));
-    beta_z = (float*)mxGetData(mxGetField(ITER_PARA, 0, "beta_z"));
-    host_AUMISART(h_outimg, h_outproj, h_outnorm, h_outalphax, h_img, h_proj, nx, ny, nz, na, nb, outIter, n_views, n_iter, op_iter, da, db, ai, bi, SO, SD, dx, lambda, volumes, flows, err_weights, angles, alpha_x, alpha_y, alpha_z, beta_x, beta_y, beta_z);
+    host_AUMISART(h_outimg, h_outproj, h_outnorm, h_outalphax, h_img, h_proj, nx, ny, na, outIter, n_views, n_iter, op_iter, da, ai, SO, SD, dx, lambda, volumes, flows, err_weights, angles, alpha_x, alpha_y, beta_x, beta_y);
 }
     
 return;
