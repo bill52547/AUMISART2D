@@ -2,7 +2,7 @@
 __host__ void host_multiple(float *img1, int nx, int ny, float *img0, float weight, int ind)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     kernel_multiple<<<gridSize, blockSize>>>(img1, nx, ny, 1, img0, weight, ind);
     cudaDeviceSynchronize();
 }

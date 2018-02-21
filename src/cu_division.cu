@@ -2,7 +2,7 @@
 __host__ void host_division(float *img1, float *img, int nx, int ny)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     kernel_division<<<gridSize, blockSize>>>(img1, img, nx, ny);
     cudaDeviceSynchronize();
 }

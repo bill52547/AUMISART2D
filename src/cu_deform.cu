@@ -3,7 +3,7 @@
 __host__ void host_deform(float *d_img1, float *d_img, int nx, int ny, float volume, float flow, float *alpha_x, float *alpha_y, float *beta_x, float *beta_y)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     float *mx, *my;
     cudaMalloc((void**)&mx, nx * ny * sizeof(float));
     cudaMalloc((void**)&my, nx * ny * sizeof(float));
@@ -47,7 +47,7 @@ __host__ void host_deform(float *d_img1, float *d_img, int nx, int ny, float vol
 __host__ void host_deform_invert(float *d_img1, float *d_img, int nx, int ny, float volume, float flow, float *alpha_x, float *alpha_y, float *beta_x, float *beta_y)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     float *mx, *my;
     cudaMalloc((void**)&mx, nx * ny * sizeof(float));
     cudaMalloc((void**)&my, nx * ny * sizeof(float));
@@ -101,7 +101,7 @@ __host__ void host_deform_invert(float *d_img1, float *d_img, int nx, int ny, fl
 __host__ void host_invert(float *mx2, float *my2, float *mx, float *my, int nx, int ny)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
     cudaPitchedPtr dp_mx = make_cudaPitchedPtr((void*) mx, nx * sizeof(float), nx, ny);
     cudaPitchedPtr dp_my = make_cudaPitchedPtr((void*) my, nx * sizeof(float), nx, ny);
@@ -169,7 +169,7 @@ __global__ void kernel_invert(float *mx2, float *my2, cudaTextureObject_t tex_mx
 __host__ void host_deform2(float *d_img1, float *d_img, int nx, int ny, float volume, float flow, float *alpha_x, float *alpha_y, float *beta_x, float *beta_y)
 {
     const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     float *mx, *my;
     cudaMalloc((void**)&mx, nx * ny * sizeof(float));
     cudaMalloc((void**)&my, nx * ny * sizeof(float));
@@ -197,9 +197,9 @@ __global__ void kernel_deformation(float *img1, cudaTextureObject_t tex_img, flo
     int iy = BLOCKSIZE_Y * blockIdx.y + threadIdx.y;
     if (ix >= nx || iy >= ny)
         return;
-    int id = iy + ix * ny;
-    float xi = iy + my[id];
-    float yi = ix + mx[id];
+    int id = ix + iy * nx;
+    float xi = ix + mx[id];
+    float yi = iy + my[id];
     
     img1[id] = tex3D<float>(tex_img, xi + 0.5f, yi + 0.5f, 0.5f);
 }

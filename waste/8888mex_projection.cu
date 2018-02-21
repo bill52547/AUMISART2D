@@ -116,7 +116,7 @@ cudaMemcpy(d_img, h_img, nx * ny * nz * sizeof(float), cudaMemcpyHostToDevice);
 
 cudaMalloc((void**)&d_proj, na * nb * sizeof(float));
 const dim3 gridSize_singleProj((na + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (nb + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, 1);
-const dim3 blockSize(BLOCKSIZE_X,BLOCKSIZE_Y, BLOCKSIZE_Z);
+const dim3 blockSize(BLOCKSIZE_X,BLOCKSIZE_Y, 1);
 
 kernel_projection<<<gridSize_singleProj, blockSize>>>(d_proj, d_img, angle, SO, SD, da, na, ai, db, nb, bi, nx, ny, nz);
 cudaDeviceSynchronize();

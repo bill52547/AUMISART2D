@@ -2,8 +2,8 @@
 
 __host__ void host_update_udvf(float *alpha_x, float* alpha_y, float *alpha_z, float *beta_x, float *beta_y, float *beta_z, float *img, float *img0, float volume_diff, float flow_diff, int nx, int ny, int nz, int iter)
 {
-    const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, (nz + BLOCKSIZE_Z - 1) / BLOCKSIZE_Z);
-    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 gridSize((nx + BLOCKSIZE_X - 1) / BLOCKSIZE_X, (ny + BLOCKSIZE_Y - 1) / BLOCKSIZE_Y, (nz + 1 - 1) / 1);
+    const dim3 blockSize(BLOCKSIZE_X, BLOCKSIZE_Y, 1);
     kernel_update_udvf<<<gridSize, blockSize>>>(alpha_x, alpha_y, alpha_z, beta_x, beta_y, beta_z, img, img0, volume_diff, flow_diff, nx, ny, nz, iter);
     cudaDeviceSynchronize();
 }
@@ -12,7 +12,7 @@ __global__ void kernel_update_udvf(float *alpha_x, float* alpha_y, float *alpha_
 {
     int ix = BLOCKSIZE_X * blockIdx.x + threadIdx.x;
     int iy = BLOCKSIZE_Y * blockIdx.y + threadIdx.y;
-    int iz = BLOCKSIZE_Z * blockIdx.z + threadIdx.z;
+    int iz = 1 * blockIdx.z + threadIdx.z;
     
     if (ix >= nx || iy >= ny || iz >= nz)
         return;

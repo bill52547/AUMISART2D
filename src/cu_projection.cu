@@ -7,7 +7,7 @@ __host__ void host2_projection(float *proj, float *img, float angle, float SO, f
 __host__ void host_projection(float *d_proj, float *d_img, float angle, float SO, float SD, float da, int na, float ai, int nx, int ny)
 {
     const dim3 gridSize_singleProj((na + BLOCKSIZE_X - 1) / BLOCKSIZE_X, 1, 1);
-    const dim3 blockSize(BLOCKSIZE_X,BLOCKSIZE_Y, BLOCKSIZE_Z);
+    const dim3 blockSize(BLOCKSIZE_X,BLOCKSIZE_Y, 1);
     kernel_projection<<<gridSize_singleProj, blockSize>>>(d_proj, d_img, angle, SO, SD, da, na, ai, nx, ny);
     cudaDeviceSynchronize();
 }
