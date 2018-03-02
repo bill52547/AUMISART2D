@@ -172,7 +172,7 @@ __global__ void kernel_projection(float *proj, float *img, float angle, float SO
             for (int iy = MAX(0, Yi1); iy <= MIN(ny - 1, Yi2); iy++)
             {
                 wy = MIN(iy + 1.0f, yi2) - MAX(iy + 0.0f, yi1); wy /= (yi2 - yi1);
-                proj[id] += img[ix + iy * nx] * wy;                
+                proj[id] += img[ix + iy * nx] * wy / ABS(x21) * sqrt(x21 * x21 + y21 * y21);                
             }        
         }
     }
@@ -210,7 +210,7 @@ __global__ void kernel_projection(float *proj, float *img, float angle, float SO
             for (int ix = MAX(0, Xi1); ix <= MIN(nx - 1, Xi2); ix++)
             {
                 wx = MIN(ix + 1.0f, xi2) - MAX(ix + 0.0f, xi1); wx /= (xi2 - xi1);
-                proj[id] += img[ix + iy * nx] * wx;                
+                proj[id] += img[ix + iy * nx] * wx / ABS(y21) * sqrt(x21 * x21 + y21 * y21);                
             }        
         }            
     }

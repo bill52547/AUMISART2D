@@ -86,9 +86,12 @@ __global__ void kernel_deformation(float *img1, cudaTextureObject_t tex_img, flo
     int iy = 16 * blockIdx.y + threadIdx.y;
     if (ix >= nx || iy >= ny)
         return;
-    int id = iy + ix * ny;
-    float xi = iy + my[id];
-    float yi = ix + mx[id];
+    // int id = iy + ix * ny;
+    // float xi = iy + my[id];
+    // float yi = ix + mx[id];
+    int id = ix + iy * nx;
+    float xi = ix + mx[id];
+    float yi = iy + my[id];
     
     img1[id] = tex3D<float>(tex_img, xi + 0.5f, yi + 0.5f, 0.5f);
 }

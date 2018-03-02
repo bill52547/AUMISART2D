@@ -5,7 +5,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray const *prhs[])
 // Macro for input and output
 #define MX prhs[0]
 #define MY prhs[1]
-#define PARA prhs[3]
+#define PARA prhs[2]
 
 #define OUT_MX plhs[0]
 #define OUT_MY plhs[1]
